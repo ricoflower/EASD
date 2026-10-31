@@ -1,6 +1,6 @@
 # Implementation and compatibility
 
-This source release reorganizes and fixes the author's existing implementation. It preserves the learned operators and parameter names used by the available EASD checkpoints. It should not be interpreted as a new model variant or a new benchmark measurement.
+This source release reorganizes and fixes the author's existing implementation. It preserves the learned operators while giving modules explicit EASD names. Original checkpoint keys are migrated by one dedicated loader. It should not be interpreted as a new model variant or a new benchmark measurement.
 
 ## Architecture
 
@@ -8,17 +8,15 @@ The temporal branch splits the 41-frame stream into five overlapping 13-frame bl
 
 The spatial branch sums the spike stream along time, embeds it into 60 channels, and applies entropy selective attention. The entropy selector merges adjacent `2×2` groups of `8×8` windows. A merged group's mean entropy must be between half the image's mean window entropy and the mean itself to be selected as foreground. Thresholds and selections are computed separately for each image. Selected windows receive offset-warped attention; the remaining windows use the lightweight background path.
 
-A projected, channel-softmax spatial feature is added to the temporal feature. The CSPDarknet decoder upsamples the representation by two before its Focus stem, yielding effective detection strides `4/8/16` on the padded spike canvas. The model returns detection heads in coarse-to-fine order (`16/8/4`) and a fourth tensor containing the fused representation.
+A projected, channel-softmax spatial feature is added to the temporal feature. The CSPDarknet decoder upsamples the representation by two before its Focus stem, yielding effective detection strides `4/8/16` on the padded spike canvas. The model returns `EASDOutput(head_logits, representation)`, with three head logits in coarse-to-fine order (`16/8/4`).
 
 ## Network forward and complete inference
 
-The name `YoloBody` is inherited from the YOLO training framework. In this repository it contains the whole EASD network, including both the shared temporal branch and the entropy selective spatial branch, their fusion, the upsampled CSPDarknet decoder, and all three detection heads. It is not an unmodified RGB YOLO model.
+`easd/model.py` defines `EASD`: temporal texture extraction and fusion, entropy selective spatial attention, branch fusion, CSPDarknet and the detection heads. `forward` returns raw `head_logits` and `representation`.
 
-`YoloBody.forward` returns `(coarse_logits, medium_logits, fine_logits, representation)`. The fourth tensor is an intermediate feature representation; none of these tensors is the final list of detections.
+`easd/inference.py` defines `EASDDetector`. Construction loads trained weights strictly and switches to evaluation mode. `predict` runs the model, decodes its heads, filters confidence, applies class-wise NMS, removes padding and clips boxes to sensor dimensions. It returns one `N × 6` array per image: `[xmin,ymin,xmax,ymax,score,class_id]`.
 
-The complete prediction API is `YOLO.predict_tensor` in `yolo.py`. Construction loads a full EASD state_dict and switches the network to evaluation mode. Prediction calls the network, decodes only the first three outputs, applies confidence filtering and class-wise NMS, removes the symmetric padding offset, and clips boxes to the original sensor dimensions. It returns one `N × 6` array per image, ordered as `[xmin, ymin, xmax, ymax, score, class_id]`.
-
-`predict.py` is the command-line wrapper: it reads the spike recording, calls `YOLO.predict_tensor`, and writes JSON and a visualization. `load_spikes` does not reconstruct RGB images; the detection visualization uses the temporal mean only as a display background.
+`predict.py` reads recordings and writes JSON and a visualization. The temporal mean provides a display background only. Evaluation uses the same detector; `easd/metrics.py` calculates VOC AP50 or calls the official pycocotools evaluator directly.
 
 ## Corrections relative to the original code
 
@@ -43,8 +41,8 @@ These original implementation choices are retained to preserve checkpoint behavi
 
 Changing these operators requires a separately identified model variant and retraining/evaluation. The entropy selection illustrations use the paper's conceptual diagram; the executable operators are defined by the code.
 
-Two unused parameter groups from the old checkpoint schema, `alpha` and the predictor's `out_mask`, are retained for strict loading and excluded from optimization. The DSEC-small schema contains 288 state_dict entries.
+The unused scalar `alpha` and unused predictor `out_mask` MLP have been removed from the model. The 3-class small model now has 283 state_dict entries. `easd/checkpoints.py` migrates the original 288-entry layout, drops exactly those five unused tensor entries, and requires a strict match for everything else. Unknown parameters and incompatible class counts fail explicitly. See [migration notes](MIGRATION.md).
 
 ## Scope
 
-The supported interface is single-device CPU/CUDA training and spike-native inference/evaluation. It does not include RGB webcam inference, RGB ONNX examples, optimizer-state resume, or distributed training. Optional THOP profiling may omit attention matrix multiplications and routing; its estimate is not a complete theoretical FLOP count.
+The supported interface is single-device CPU/CUDA training and spike inference/evaluation. Legacy RGB detection, webcam/ONNX examples, unused plotting and profiling utilities, old module aliases, optimizer-state resume and distributed training are outside this release.

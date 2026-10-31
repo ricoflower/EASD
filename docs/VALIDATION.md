@@ -2,29 +2,22 @@
 
 ## Execution checks
 
-The cleaned implementation has been exercised locally on CPU with Python 3.12, PyTorch 2.3.1, torchvision 0.18.1, and NumPy 2.0. A fresh copy of the public source tree is checked independently of the author's original repository, private checkpoints, and dataset directories.
+The `easd` package has been exercised locally with Python 3.12, PyTorch 2.3.1, torchvision 0.18.1 and NumPy 2.0 on CPU. The public source is also checked from an independent temporary copy, without the old `nets`, `utils` or `model_data` directories.
 
-The regression suite checks:
+The 17 regression tests cover symmetric padding and label coordinates, visible-box clipping, little-endian PKU spike decoding, paths with spaces, empty annotations, effective target strides, per-sample entropy decisions, empty/full/mixed routing, gradients through both branches and the decoder, full-resolution named outputs, native checkpoint round trips, pretrained decoder loading, legacy key migration, rejection of unknown checkpoint keys, sensor-coordinate postprocessing/NMS, and VOC/COCO metric fixtures.
 
-- symmetric padding and raw/padded label coordinates;
-- clipping partially visible annotations;
-- little-endian PKU bit-packed spike decoding;
-- empty labels, paths with spaces, and target-grid sizes;
-- per-sample entropy decisions;
-- all-background, all-foreground, and unequal foreground counts in a batch;
-- training mode preservation and gradients in both branches and the decoder;
-- full-resolution output shapes and strict state_dict round trips;
-- loading pretrained backbones from `backbone.*` checkpoint keys;
-- mapping predictions back to sensor coordinates.
+The full-resolution smoke test performs a training update, validation, EMA checkpoint saving, strict reload, decoding and NMS. Epoch-end VOC evaluation is also exercised. Its synthetic execution report is [validation_smoke.json](validation_smoke.json). Synthetic losses and detections have no benchmark meaning.
 
-The full-resolution smoke test performs a training update, validation, EMA checkpoint save, strict reload, decoding and NMS, using generated binary spikes. The CI workflow is provided in `.github/workflows/ci.yml`; no remote CI success is claimed before it has actually run on GitHub.
+The official pycocotools COCO evaluator has been checked with a perfect detection fixture, an empty prediction fixture, and one real recording. CI installs the optional evaluation dependency and runs the same regression suite and full-resolution training smoke test.
 
-## Additional checks against author files
+## Checkpoint and output parity
 
-Before packaging the public tree, the author's original 3-class checkpoint loaded strictly with 288 matching state_dict entries. On one real DSEC-Spike example and the same padded input, the original and cleaned batch-one model logits differed by at most approximately `1.15e-5`; the fused representation differed by approximately `2.4e-7`.
+The author's original 3-class checkpoint contains 288 tensor entries. The renamed model loads it by explicitly migrating its active keys and dropping only five unused entries from `alpha` and `out_mask`; the new small-model state_dict has 283 entries.
 
-The same real example and its matching annotation completed one training update, validation, inference, and VOC evaluation. These are execution checks on one sample, not an estimate of generalization or a replacement for evaluation on a held-out test split.
+On the same real DSEC-Spike recording, the renamed package and the immediately preceding cleaned implementation produced exactly equal outputs: maximum absolute difference **0** for all three head logits, the fused representation, and all nine final detections. This checks that this package reorganization preserves computation and postprocessing. Earlier fixes to the original experimental code are described in [IMPLEMENTATION](IMPLEMENTATION.md).
+
+The real recording and its matching annotation also completed prediction, a bounded training/validation run and standalone VOC/COCO evaluation through the new entry points. These are execution checks on one sample, not measurements of generalization.
 
 ## Remaining experimental scope
 
-A complete six-epoch benchmark training run, evaluation over the full DSEC-Spike/PKU-Vidar-DVS splits, CUDA mixed precision, and the COCO evaluation path have not been validated during this cleanup. The paper's `52.9/60.1` values are reported mAP@50 values from the original paper, not newly reproduced results.
+A complete six-epoch benchmark run, full DSEC-Spike/PKU-Vidar-DVS evaluation and CUDA mixed precision have not been validated during this cleanup. The paper's `52.9/60.1` results are reported mAP@50 values, not newly reproduced measurements.

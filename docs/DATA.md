@@ -24,7 +24,7 @@ spikes/frame_000002.npy
 
 The box fields are `x_center,y_center,width,height,class_id`, normalized to the **raw sensor canvas**, before padding. An empty image has only its path. Relative paths are resolved against the annotation file's directory, or against `--data-root` when supplied. File paths containing spaces are supported.
 
-DSEC class indices, from `model_data/dsec.txt`:
+DSEC class indices, from `configs/dsec_classes.txt`:
 
 | Index | Class |
 | --- | --- |
@@ -45,7 +45,7 @@ Use `--input-type spike` with `.dat` recordings. Decoding uses:
 
 A recording must contain the complete requested slice. Change the loader explicitly if using a different sensor format or timestamp convention.
 
-The nine class indices are defined by `model_data/spike.txt`. A 9-class checkpoint must be used with that mapping; the 3-class DSEC checkpoint is incompatible with the 9-class detection heads.
+The nine class indices are defined by `configs/pku_classes.txt`. A 9-class checkpoint must be used with that mapping; the 3-class DSEC checkpoint is incompatible with the 9-class detection heads.
 
 ## Padding convention
 

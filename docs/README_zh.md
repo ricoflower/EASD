@@ -22,7 +22,7 @@ python -m unittest discover -s tests -v
 
 输入 shape 为 `(B,41,250,400)`，也接受单个 `(41,250,400)`。时间维是连续的 41 帧二值脉冲。模型内部上下各做 3 行 symmetric padding，得到 `256×400`。数据加载器同步转换标签；推理结束后再去掉 padding 的坐标偏移。
 
-DSEC 三类映射为 `0=person, 1=large_vehicle, 2=car`。返回的三个检测张量分别为 `(B,24,16,25)`、`(B,24,32,50)` 和 `(B,24,64,100)`，第四个张量为三通道融合表征。
+DSEC 三类映射为 `0=person, 1=large_vehicle, 2=car`。返回的三个检测张量分别为 `(B,24,16,25)`、`(B,24,32,50)` 和 `(B,24,64,100)`，融合表征位于 `output.representation`，三个检测头位于 `output.head_logits`。
 
 标注每行使用原始画面上的归一化 `xywh,class_id`：
 
@@ -30,7 +30,7 @@ DSEC 三类映射为 `0=person, 1=large_vehicle, 2=car`。返回的三个检测�
 spikes/sample.npy 0.5,0.6,0.2,0.3,2
 ```
 
-相对路径默认相对于标注文件。详见 [数据格式](DATA.md)。PKU `.dat` 使用 `--input-type spike`，按固定 `250×400` 解析并提取 `[180:221]`，对应的 classes 文件是九类 `model_data/spike.txt`。
+相对路径默认相对于标注文件。详见 [数据格式](DATA.md)。PKU `.dat` 使用 `--input-type spike`，按固定 `250×400` 解析并提取 `[180:221]`，对应的 classes 文件是九类 `configs/pku_classes.txt`。
 
 ## 训练与推理
 
@@ -48,7 +48,7 @@ python predict.py --input data/example.npy \
 
 ```bash
 python -m pip install -r requirements-eval.txt
-python get_map.py --annotations data/val.txt \
+python evaluate.py --annotations data/val.txt \
   --weights weights/easd_dsec_s.pth --metric voc --output map_out/val
 ```
 
@@ -56,22 +56,24 @@ python get_map.py --annotations data/val.txt \
 
 ## 网络前向与完整推理
 
-`nets/yolo.py` 的 `YoloBody` 沿用 YOLO 框架的类名，内部实际包含完整 EASD：时序纹理提取与融合、熵选择空间注意力、双分支融合、CSPDarknet 和三个检测头。直接调用它返回三个尺度的原始 logits 和融合表征。
+`from easd import EASD` 是完整网络，包含时序分支、空间分支、融合、CSPDarknet 和检测头。`forward` 返回 `EASDOutput(head_logits, representation)`，用于训练或分析网络。
 
-完整推理入口是 `yolo.py` 的 `YOLO.predict_tensor()`：加载训练好的完整模型权重后，执行网络前向、框解码、置信度过滤、逐类别 NMS、去除 padding 偏移和原图坐标裁剪，得到 `[xmin,ymin,xmax,ymax,score,class_id]`。`predict.py` 在此基础上负责读取数据和保存 JSON/检测图。
+`from easd import EASDDetector` 是完整推理接口：加载权重、网络前向、框解码、置信度过滤、逐类别 NMS、去除 padding 和原图坐标裁剪。每个样本返回 `N×6` 的 `[xmin,ymin,xmax,ymax,score,class_id]` 数组。
 
 ```python
-from utils.spikes import load_spikes
-from yolo import YOLO
+from easd import EASDDetector
+from easd.spikes import load_spikes
 
-detector = YOLO(model_path="weights/easd_dsec_s.pth", device="auto")
+detector = EASDDetector(weights="weights/easd_dsec_s.pth", device="auto")
 spikes = load_spikes("data/example.npy", input_type="dsec")
-detections = detector.predict_tensor(spikes)[0]
+detections = detector.predict(spikes)[0]
 ```
+
+原作者旧权重会自动映射到新名称，再严格加载。旧的 `nets`、`utils`、`yolo.py` 等入口已移除；迁移对照见 [MIGRATION](MIGRATION.md)。模型大小参数统一为 `--variant s/m/l/x`。
 
 ## 实现与开源内容
 
-时序、空间、主干分别位于 `nets/temporal.py`、`nets/spatial.py`、`nets/CSPdarknet.py`。仓库包含训练/推理/评估入口、自动测试、GitHub Actions、英文首页、论文配图、原始熵掩码示例、引用文件和上游许可声明。历史日志、服务器绝对路径、无关实验模块和大权重没有放入源码树。
+时序、空间、主干分别位于 `easd/temporal.py`、`easd/spatial.py`、`easd/backbone.py`。仓库包含训练/推理/评估入口、自动测试、GitHub Actions、英文首页、论文配图、论文附录原图、引用文件和上游许可声明。历史日志、服务器绝对路径、无关实验模块和大权重没有放入源码树。
 
 当前实现优先保留旧 checkpoint 的实际计算方式。论文中的 deformable convolution、注意力缩放等描述与原始代码存在差异，已明确记录在 [实现说明](IMPLEMENTATION.md)，没有在整理时擅自替换算子。验证范围见 [VALIDATION](VALIDATION.md)。
 
