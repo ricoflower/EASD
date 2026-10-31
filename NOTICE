@@ -14,10 +14,10 @@ CAMixerSR
   Copyright 2024 CAMixerSR Authors
   Licensed under the Apache License, Version 2.0.
   The full license is preserved in LICENSES/CAMixerSR-Apache-2.0.txt.
-  Modified components in nets/spatial.py include window attention, offset
+  Modified components in easd/spatial.py include window attention, offset
   warping, predictor, layer normalization, and gated feed-forward blocks.
   EASD replaces learned mask routing with entropy-based routing and uses
-  per-sample foreground selection. Checkpoint parameter names are retained.
+  per-sample foreground selection. Legacy checkpoint keys are migrated to descriptive EASD module names.
 
 Figures and data
   Paper figures and author-provided visualizations are identified in

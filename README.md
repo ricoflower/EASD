@@ -41,7 +41,7 @@ python -m pip install -r requirements.txt
 # No dataset, pretrained weights, or network downloads are needed for these checks.
 python train.py --smoke-test --device cpu
 python -m unittest discover -s tests -v
-python summary.py
+python inspect_model.py
 ```
 
 The smoke test uses full-resolution synthetic binary spikes and runs a training update, validation, EMA checkpoint saving, strict checkpoint reloading, decoding, and NMS. Results are saved in a new `logs/` directory. This is an execution check; synthetic detections have no benchmark meaning.
@@ -50,23 +50,17 @@ The code has been exercised locally with Python 3.12, PyTorch 2.3.1, torchvision
 
 ## Network forward: raw outputs
 
-`YoloBody` is the historical class name for the **complete EASD network**: temporal texture extraction and fusion, entropy selective spatial attention, branch fusion, CSPDarknet, and three detection heads. The following example inspects the network's raw outputs with random input. It does not load a trained checkpoint or produce final detections. Use the [complete inference interface](#inference-and-evaluation) for decoded boxes.
+`EASD` contains the temporal branch, entropy selective spatial branch, fusion, CSPDarknet decoder and detection heads. Its named output separates raw head logits from the fused representation. This example uses random initialization; trained detections use `EASDDetector` below.
 
 ```python
 import torch
-from nets.yolo import YoloBody
+from easd import EASD
 
-model = YoloBody(
-    anchors_mask=[[6, 7, 8], [3, 4, 5], [0, 1, 2]],
-    num_classes=3,
-    phi="s",
-    pretrained=False,  # Set True after providing local CSPDarknet weights.
-).eval()
-
+model = EASD(num_classes=3, variant="s").eval()
 with torch.no_grad():
-    coarse, medium, fine, representation = model(
-        torch.randint(0, 2, (1, 41, 250, 400)).float()
-    )
+    output = model(torch.randint(0, 2, (1, 41, 250, 400)).float())
+    coarse, medium, fine = output.head_logits
+    representation = output.representation
 ```
 
 | Tensor | Shape for the 3-class configuration |
@@ -103,6 +97,8 @@ python train.py --scratch \
   --epochs 1 --batch-size 1 --max-steps 1 --device cpu
 ```
 
+Use `--variant s/m/l/x` to select the model size. Existing author checkpoints are migrated automatically and then loaded strictly; see [migration notes](docs/MIGRATION.md).
+
 Logs include `config.json`, `metrics.csv`, and best/last EMA model state dicts. Resuming optimizer state and multi-GPU training are outside this release's training interface.
 
 ## Inference and evaluation
@@ -119,32 +115,21 @@ python predict.py \
 This writes a detection image and JSON in raw sensor coordinates. For complete inference from Python:
 
 ```python
-from utils.spikes import load_spikes
-from yolo import YOLO
+from easd import EASDDetector
+from easd.spikes import load_spikes
 
 # Loads a trained checkpoint containing both EASD branches, the decoder, and heads.
-detector = YOLO(model_path="weights/easd_dsec_s.pth", device="auto")
+detector = EASDDetector(weights="weights/easd_dsec_s.pth", device="auto")
 spikes = load_spikes("data/example.npy", input_type="dsec")
-detections = detector.predict_tensor(spikes)[0]
+detections = detector.predict(spikes)[0]
 # detections: N × 6 [xmin, ymin, xmax, ymax, score, class_id]
 ```
 
-The inference call chain is:
-
-```text
-predict.py → load_spikes → YOLO.predict_tensor
-    → YoloBody: temporal branch + spatial branch → fusion → CSPDarknet + heads
-    → DecodeBox.decode_box
-    → confidence filtering + class-wise NMS
-    → remove padding, clip boxes to the raw sensor canvas
-    → detections, JSON and visualization
-```
-
-Calling `YoloBody(spikes)` alone returns three raw detection-head tensors and the fused representation. `YOLO.predict_tensor(spikes)` performs the full inference path and returns one `N × 6` array per sample.
+The complete path is `load_spikes → EASDDetector.predict → EASD → head decoding → confidence filtering → class-wise NMS → sensor-coordinate correction`. `EASD.forward` returns raw network outputs; `EASDDetector.predict` returns one final `N × 6` detection array per sample.
 
 ```bash
 python -m pip install -r requirements-eval.txt
-python get_map.py \
+python evaluate.py \
   --annotations data/val.txt --weights weights/easd_dsec_s.pth \
   --metric voc --output map_out/validation
 ```
@@ -188,14 +173,17 @@ These two figures are extracted directly from page 8 of the author-provided EASD
 ## Repository layout
 
 ```text
-nets/          temporal branch, spatial branch, CSPDarknet, YOLO loss and heads
-utils/         spike I/O, datasets, checkpoints, train loop, decoding and evaluation
-model_data/    class names and anchors; no model weights
+easd/          EASD model, branches, decoder, data, loss and inference
+configs/       class mappings and anchors
+train.py       training and end-to-end smoke test
+predict.py     spike recording → detection JSON and image
+evaluate.py    VOC AP50 / official COCO AP50:95
+inspect_model.py  output shapes and parameter count
 examples/      deterministic synthetic data generator
-tests/         data, routing, coordinates, gradients and state-dict regression tests
+tests/         data, routing, gradients, checkpoints, postprocessing and metrics
 docs/          paper figures, guides, provenance and validation scope
 weights/       checkpoint preparation instructions
-.github/       CPU checks and issue templates
+.github/       automated checks and issue templates
 ```
 
 ## Citation
