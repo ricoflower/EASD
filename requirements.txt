@@ -1,0 +1,7 @@
+# Baseline versions exercised in the author's local CPU environment.
+# For CUDA, install matching torch/torchvision builds for your platform.
+torch==2.3.1
+torchvision==0.18.1
+numpy>=1.26,<2
+Pillow>=10,<12
+tqdm>=4.66,<5

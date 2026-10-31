@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use EASD in your research, please cite the paper."
+type: software
+title: "EASD: Driving in Spikes"
+abstract: "An entropy-guided dual-branch object detector for spike cameras."
+license: GPL-3.0
+repository-code: "https://github.com/ricoflower/EASD"
+authors:
+  - family-names: Liu
+    given-names: Ziyan
+  - family-names: Su
+    given-names: Qi
+  - family-names: Tang
+    given-names: Lulu
+  - family-names: Yu
+    given-names: Zhaofei
+  - family-names: Huang
+    given-names: Tiejun
+preferred-citation:
+  type: article
+  title: "Driving in Spikes: An Entropy-Guided Object Detector for Spike Cameras"
+  authors:
+    - family-names: Liu
+      given-names: Ziyan
+    - family-names: Su
+      given-names: Qi
+    - family-names: Tang
+      given-names: Lulu
+    - family-names: Yu
+      given-names: Zhaofei
+    - family-names: Huang
+      given-names: Tiejun
+  journal: arXiv
+  year: 2025
+  url: "https://arxiv.org/abs/2511.15459"

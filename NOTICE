@@ -1,0 +1,25 @@
+EASD: Driving in Spikes: An Entropy-Guided Object Detector for Spike Cameras
+Research: Ziyan Liu, Qi Su, Lulu Tang, Zhaofei Yu, and Tiejun Huang.
+
+YOLO framework and decoder
+  Source: https://github.com/bubbliiiing/yolov5-pytorch
+  Original repository license: GNU GPL version 3; retained in LICENSE.
+  Adapted components include CSPDarknet, YOLO loss, decoding, target assignment,
+  EMA utilities, and evaluation helpers. EASD modifications include spike-native
+  temporal/spatial branches, input/coordinate handling, training entry points,
+  entropy routing fixes, and release documentation.
+
+CAMixerSR
+  Source: https://github.com/icandle/CAMixerSR
+  Copyright 2024 CAMixerSR Authors
+  Licensed under the Apache License, Version 2.0.
+  The full license is preserved in LICENSES/CAMixerSR-Apache-2.0.txt.
+  Modified components in nets/spatial.py include window attention, offset
+  warping, predictor, layer normalization, and gated feed-forward blocks.
+  EASD replaces learned mask routing with entropy-based routing and uses
+  per-sample foreground selection. Checkpoint parameter names are retained.
+
+Figures and data
+  Paper figures and author-provided visualizations are identified in
+  docs/ASSETS.md. Dataset rights and access terms remain with their respective
+  providers. The repository does not include the full datasets or checkpoints.
