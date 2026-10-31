@@ -1,9 +1,0 @@
-character
-hand
-pen
-bottle
-tank
-car
-person
-UAV
-basketball

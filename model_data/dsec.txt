@@ -1,3 +1,0 @@
-person
-large_vehicle
-car
