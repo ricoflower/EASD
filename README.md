@@ -4,7 +4,7 @@
 
 ### Driving in Spikes: An Entropy-Guided Object Detector for Spike Cameras
 
-**Ziyan Liu\*** · **Qi Su\*** · **Lulu Tang†** · **Zhaofei Yu†** · **Tiejun Huang**
+**Ziyan Liu** · **Qi Su** · **Lulu Tang†** · **Zhaofei Yu†** · **Tiejun Huang**
 
 Peking University · Beijing Academy of Artificial Intelligence
 
@@ -15,7 +15,7 @@ Peking University · Beijing Academy of Artificial Intelligence
 
 [Paper](https://arxiv.org/abs/2511.15459) · [中文指南](docs/README_zh.md) · [Data](docs/DATA.md) · [Checkpoints](weights/README.md) · [Implementation notes](docs/IMPLEMENTATION.md)
 
-\* Equal contribution. † Corresponding authors.
+† Corresponding authors.
 
 </div>
 
