@@ -1,0 +1,47 @@
+{
+  "input": [
+    1,
+    41,
+    250,
+    400
+  ],
+  "outputs": [
+    [
+      1,
+      24,
+      16,
+      25
+    ],
+    [
+      1,
+      24,
+      32,
+      50
+    ],
+    [
+      1,
+      24,
+      64,
+      100
+    ],
+    [
+      1,
+      3,
+      256,
+      400
+    ]
+  ],
+  "decoded": [
+    1,
+    25200,
+    8
+  ],
+  "train_loss": 1.123641014099121,
+  "val_loss": 1.0933606624603271,
+  "checkpoint": "strict reload passed",
+  "nms": "passed",
+  "kind": "synthetic_full_resolution_smoke",
+  "device": "cpu",
+  "regression_tests_passed": 10,
+  "benchmark_reproduction": false
+}
