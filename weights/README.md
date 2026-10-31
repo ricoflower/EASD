@@ -13,7 +13,7 @@ weights/yolov5_s.pth               # YOLO state_dict containing backbone.* keys
 
 Or pass `--backbone-weights /path/to/checkpoint.pth`. The loader extracts `backbone.*` keys when necessary and requires a strict match. A checkpoint pickled as an arbitrary Python model object, such as some `yolov5s.pt` files, is not interchangeable with a tensor state_dict.
 
-Upstream backbone checkpoints are distributed by [yolov5-pytorch](https://github.com/bubbliiiing/yolov5-pytorch). Match the model size (`s/m/l/x`) to `--phi`. The code does not silently download weights or fall back to random initialization.
+Upstream backbone checkpoints are distributed by [yolov5-pytorch](https://github.com/bubbliiiing/yolov5-pytorch). Match the model size (`s/m/l/x`) to `--variant`. The code does not silently download weights or fall back to random initialization.
 
 ## Trained EASD
 
@@ -21,7 +21,7 @@ Upstream backbone checkpoints are distributed by [yolov5-pytorch](https://github
 weights/easd_dsec_s.pth            # 3-class EASD-small, if provided by the authors
 ```
 
-Use `--weights /path/to/easd_state_dict.pth` for inference, evaluation, or fine-tuning. Loading is strict. A training checkpoint in this release contains the EMA model's tensor state_dict, rather than optimizer or scheduler state.
+Use `--weights /path/to/easd_state_dict.pth` for inference, evaluation, or fine-tuning. Loading is strict after automatic migration of the original author checkpoint layout. Newly saved weights use descriptive EASD module names; see [migration notes](../docs/MIGRATION.md). A training checkpoint in this release contains the EMA model's tensor state_dict, rather than optimizer or scheduler state.
 
 ## No weights available
 
