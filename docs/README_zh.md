@@ -54,6 +54,21 @@ python get_map.py --annotations data/val.txt \
 
 `voc` 是 VOC AP50，`coco` 是 COCO AP50:95，不能混用。论文表格里的 `52.9/60.1` 为 mAP@50。本次开源整理验证了运行链路，没有重新完成论文的全量训练与指标复现。
 
+## 网络前向与完整推理
+
+`nets/yolo.py` 的 `YoloBody` 沿用 YOLO 框架的类名，内部实际包含完整 EASD：时序纹理提取与融合、熵选择空间注意力、双分支融合、CSPDarknet 和三个检测头。直接调用它返回三个尺度的原始 logits 和融合表征。
+
+完整推理入口是 `yolo.py` 的 `YOLO.predict_tensor()`：加载训练好的完整模型权重后，执行网络前向、框解码、置信度过滤、逐类别 NMS、去除 padding 偏移和原图坐标裁剪，得到 `[xmin,ymin,xmax,ymax,score,class_id]`。`predict.py` 在此基础上负责读取数据和保存 JSON/检测图。
+
+```python
+from utils.spikes import load_spikes
+from yolo import YOLO
+
+detector = YOLO(model_path="weights/easd_dsec_s.pth", device="auto")
+spikes = load_spikes("data/example.npy", input_type="dsec")
+detections = detector.predict_tensor(spikes)[0]
+```
+
 ## 实现与开源内容
 
 时序、空间、主干分别位于 `nets/temporal.py`、`nets/spatial.py`、`nets/CSPdarknet.py`。仓库包含训练/推理/评估入口、自动测试、GitHub Actions、英文首页、论文配图、原始熵掩码示例、引用文件和上游许可声明。历史日志、服务器绝对路径、无关实验模块和大权重没有放入源码树。

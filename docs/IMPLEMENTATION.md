@@ -10,6 +10,16 @@ The spatial branch sums the spike stream along time, embeds it into 60 channels,
 
 A projected, channel-softmax spatial feature is added to the temporal feature. The CSPDarknet decoder upsamples the representation by two before its Focus stem, yielding effective detection strides `4/8/16` on the padded spike canvas. The model returns detection heads in coarse-to-fine order (`16/8/4`) and a fourth tensor containing the fused representation.
 
+## Network forward and complete inference
+
+The name `YoloBody` is inherited from the YOLO training framework. In this repository it contains the whole EASD network, including both the shared temporal branch and the entropy selective spatial branch, their fusion, the upsampled CSPDarknet decoder, and all three detection heads. It is not an unmodified RGB YOLO model.
+
+`YoloBody.forward` returns `(coarse_logits, medium_logits, fine_logits, representation)`. The fourth tensor is an intermediate feature representation; none of these tensors is the final list of detections.
+
+The complete prediction API is `YOLO.predict_tensor` in `yolo.py`. Construction loads a full EASD state_dict and switches the network to evaluation mode. Prediction calls the network, decodes only the first three outputs, applies confidence filtering and class-wise NMS, removes the symmetric padding offset, and clips boxes to the original sensor dimensions. It returns one `N × 6` array per image, ordered as `[xmin, ymin, xmax, ymax, score, class_id]`.
+
+`predict.py` is the command-line wrapper: it reads the spike recording, calls `YOLO.predict_tensor`, and writes JSON and a visualization. `load_spikes` does not reconstruct RGB images; the detection visualization uses the temporal mean only as a display background.
+
 ## Corrections relative to the original code
 
 - Forward passes no longer force modules into evaluation mode.
