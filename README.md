@@ -25,10 +25,9 @@ EASD detects objects directly from binary spike streams. A shared temporal textu
 
 ## Highlights
 
-- **Spike-native input:** `(B, 41, 250, 400)`, without reconstructing an RGB image first.
-- **Complementary branches:** overlapping temporal texture extraction and entropy-guided spatial attention.
-- **A small runtime:** PyTorch, torchvision, NumPy, Pillow, and tqdm; no custom CUDA extensions.
-- **Ready to inspect:** CPU smoke training, checkpoint round trips, coordinate regression tests, and a GitHub Actions workflow.
+- **Dual-branch object-centric representation:** EASD combines cross-slice global texture modeling through the Temporal-Based Texture and Feature Fusion Modules with an Entropy Selective Attention branch for object-centric spatial details.
+- **DSEC-Spike benchmark:** A simulated spike-camera detection benchmark aligned with DSEC-Detection, supporting driving-scene object detection and evaluation across simulated and real spike data.
+- **State-of-the-art results reported in the paper:** EASD achieves **52.9 mAP@50 on DSEC-Spike** and **60.1 mAP@50 on PKU-Vidar-DVS**, improving over the compared spike baselines by **11.2** and **2.2** percentage points, respectively. See the [reported results](#results-reported-in-the-paper).
 
 ## Quick start
 
@@ -49,7 +48,9 @@ The smoke test uses full-resolution synthetic binary spikes and runs a training 
 
 The code has been exercised locally with Python 3.12, PyTorch 2.3.1, torchvision 0.18.1, and NumPy 2.0 on CPU. CUDA is supported by the entry points but has not been validated as part of this code cleanup. See [validation scope](docs/VALIDATION.md).
 
-## Model interface
+## Network forward: raw outputs
+
+`YoloBody` is the historical class name for the **complete EASD network**: temporal texture extraction and fusion, entropy selective spatial attention, branch fusion, CSPDarknet, and three detection heads. The following example inspects the network's raw outputs with random input. It does not load a trained checkpoint or produce final detections. Use the [complete inference interface](#inference-and-evaluation) for decoded boxes.
 
 ```python
 import torch
@@ -115,7 +116,31 @@ python predict.py \
   --device auto --output predictions
 ```
 
-This writes a detection image and JSON in raw sensor coordinates. The Python API `YOLO.predict_tensor(spikes)` returns one `N × 6` array per sample: `[xmin, ymin, xmax, ymax, score, class_id]`.
+This writes a detection image and JSON in raw sensor coordinates. For complete inference from Python:
+
+```python
+from utils.spikes import load_spikes
+from yolo import YOLO
+
+# Loads a trained checkpoint containing both EASD branches, the decoder, and heads.
+detector = YOLO(model_path="weights/easd_dsec_s.pth", device="auto")
+spikes = load_spikes("data/example.npy", input_type="dsec")
+detections = detector.predict_tensor(spikes)[0]
+# detections: N × 6 [xmin, ymin, xmax, ymax, score, class_id]
+```
+
+The inference call chain is:
+
+```text
+predict.py → load_spikes → YOLO.predict_tensor
+    → YoloBody: temporal branch + spatial branch → fusion → CSPDarknet + heads
+    → DecodeBox.decode_box
+    → confidence filtering + class-wise NMS
+    → remove padding, clip boxes to the raw sensor canvas
+    → detections, JSON and visualization
+```
+
+Calling `YoloBody(spikes)` alone returns three raw detection-head tensors and the fused representation. `YOLO.predict_tensor(spikes)` performs the full inference path and returns one `N × 6` array per sample.
 
 ```bash
 python -m pip install -r requirements-eval.txt
