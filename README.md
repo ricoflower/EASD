@@ -63,14 +63,6 @@ with torch.no_grad():
     representation = output.representation
 ```
 
-| Tensor | Shape for the 3-class configuration |
-| --- | --- |
-| Input | `B × 41 × 250 × 400` |
-| Coarse logits | `B × 24 × 16 × 25` |
-| Medium logits | `B × 24 × 32 × 50` |
-| Fine logits | `B × 24 × 64 × 100` |
-| Fused representation | `B × 3 × 256 × 400` |
-
 The model symmetrically pads three rows above and below the raw sensor canvas. Training labels use the padded coordinates internally; inference maps boxes back to the original `250 × 400` canvas. The effective detection strides are `16, 8, 4` after the decoder's 2× upsampling. One unbatched `(41,H,W)` tensor is also accepted and produces a batch of size one.
 
 ## Training
